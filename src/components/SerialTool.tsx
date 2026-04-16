@@ -347,7 +347,7 @@ export default function SerialTool() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 grid grid-cols-[240px_1fr_300px] overflow-hidden">
+      <main className={`flex-1 grid overflow-hidden ${isGeminiConfigured ? 'grid-cols-[240px_1fr_320px]' : 'grid-cols-[240px_1fr]'}`}>
         {/* Sidebar - Settings */}
         <aside className="border-r border-[#2C2E33] bg-[#0C0D0E] flex flex-col overflow-y-auto">
           <div className="panel-header">Serial Configuration</div>
@@ -540,7 +540,7 @@ export default function SerialTool() {
 
         {/* AI Sidebar */}
         {isGeminiConfigured && (
-          <aside className="bg-[#141517] border-l border-[#2C2E33] flex flex-col overflow-hidden w-80 shrink-0">
+          <aside className="bg-[#141517] border-l border-[#2C2E33] flex flex-col overflow-hidden">
             <div className="panel-header">AI Insights & Debugging</div>
             <div className="flex-1 overflow-y-auto custom-scrollbar">
               <div className="p-4 space-y-4">
