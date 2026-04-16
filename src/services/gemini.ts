@@ -1,6 +1,9 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+const apiKey = process.env.GEMINI_API_KEY || "";
+const ai = new GoogleGenAI({ apiKey });
+
+export const isGeminiConfigured = apiKey.length > 0;
 
 export async function analyzeSerialLogs(logs: string) {
   try {

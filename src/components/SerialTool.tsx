@@ -26,7 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
-import { analyzeSerialLogs, suggestCommands } from '@/services/gemini';
+import { analyzeSerialLogs, suggestCommands, isGeminiConfigured } from '@/services/gemini';
 
 interface LogEntry {
   id: string;
@@ -539,65 +539,67 @@ export default function SerialTool() {
         </div>
 
         {/* AI Sidebar */}
-        <aside className="bg-[#141517] border-l border-[#2C2E33] flex flex-col overflow-hidden">
-          <div className="panel-header">AI Insights & Debugging</div>
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <div className="p-4 space-y-4">
-              <AnimatePresence mode="wait">
-                {analysis ? (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="space-y-4"
-                  >
-                    <div className="bg-[#00D1FF]/5 border border-[#00D1FF]/20 rounded-lg p-3">
-                      <h4 className="text-xs font-bold text-[#00D1FF] mb-2 flex items-center gap-2">
-                        <Sparkles className="w-3 h-3" /> AI ANALYSIS
-                      </h4>
-                      <div className="text-xs leading-relaxed text-[#E0E0E0] prose prose-invert prose-xs">
-                        {analysis.split('\n').map((line, i) => (
-                          <p key={i} className="mb-2">{line}</p>
-                        ))}
-                      </div>
-                    </div>
-                  </motion.div>
-                ) : (
-                  <div className="bg-[#00D1FF]/5 border border-[#00D1FF]/20 rounded-lg p-4 text-center opacity-50">
-                    <Sparkles className="w-6 h-6 mx-auto mb-2 text-[#00D1FF]" />
-                    <p className="text-[11px] text-[#E0E0E0]">Run analysis to see AI insights</p>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={handleAnalyze}
-                      disabled={isAnalyzing || logs.length === 0}
-                      className="mt-3 h-7 text-[10px] border border-[#00D1FF]/30 text-[#00D1FF] hover:bg-[#00D1FF]/10"
+        {isGeminiConfigured && (
+          <aside className="bg-[#141517] border-l border-[#2C2E33] flex flex-col overflow-hidden w-80 shrink-0">
+            <div className="panel-header">AI Insights & Debugging</div>
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              <div className="p-4 space-y-4">
+                <AnimatePresence mode="wait">
+                  {analysis ? (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-4"
                     >
-                      {isAnalyzing ? 'ANALYZING...' : 'START ANALYSIS'}
-                    </Button>
+                      <div className="bg-[#00D1FF]/5 border border-[#00D1FF]/20 rounded-lg p-3">
+                        <h4 className="text-xs font-bold text-[#00D1FF] mb-2 flex items-center gap-2">
+                          <Sparkles className="w-3 h-3" /> AI ANALYSIS
+                        </h4>
+                        <div className="text-xs leading-relaxed text-[#E0E0E0] prose prose-invert prose-xs">
+                          {analysis.split('\n').map((line, i) => (
+                            <p key={i} className="mb-2">{line}</p>
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <div className="bg-[#00D1FF]/5 border border-[#00D1FF]/20 rounded-lg p-4 text-center opacity-50">
+                      <Sparkles className="w-6 h-6 mx-auto mb-2 text-[#00D1FF]" />
+                      <p className="text-[11px] text-[#E0E0E0]">Run analysis to see AI insights</p>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={handleAnalyze}
+                        disabled={isAnalyzing || logs.length === 0}
+                        className="mt-3 h-7 text-[10px] border border-[#00D1FF]/30 text-[#00D1FF] hover:bg-[#00D1FF]/10"
+                      >
+                        {isAnalyzing ? 'ANALYZING...' : 'START ANALYSIS'}
+                      </Button>
+                    </div>
+                  )}
+                </AnimatePresence>
+
+                {suggestions.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-[11px] font-bold text-[#909296] uppercase tracking-wider">Suggested Commands</h4>
+                    <div className="grid gap-2">
+                      {suggestions.map((s, i) => (
+                        <button 
+                          key={i} 
+                          onClick={() => sendData(s)}
+                          className="text-left text-[11px] p-2 bg-white/5 border border-white/5 rounded hover:bg-white/10 transition-colors text-[#E0E0E0]"
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
-              </AnimatePresence>
 
-              {suggestions.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-[11px] font-bold text-[#909296] uppercase tracking-wider">Suggested Commands</h4>
-                  <div className="grid gap-2">
-                    {suggestions.map((s, i) => (
-                      <button 
-                        key={i} 
-                        onClick={() => sendData(s)}
-                        className="text-left text-[11px] p-2 bg-white/5 border border-white/5 rounded hover:bg-white/10 transition-colors text-[#E0E0E0]"
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
+              </div>
             </div>
-          </div>
-        </aside>
+          </aside>
+        )}
       </main>
 
       {/* Footer */}
@@ -612,11 +614,15 @@ export default function SerialTool() {
             <span>TX: <span className="text-white font-mono">{formatBytes(stats.tx)}</span></span>
             <span>RX: <span className="text-white font-mono">{formatBytes(stats.rx)}</span></span>
           </div>
-          <Separator orientation="vertical" className="h-3 bg-[#2C2E33]" />
-          <span className={`font-bold flex items-center gap-1.5 ${isAnalyzing ? 'text-[#FF9800]' : 'text-[#00D1FF]'}`}>
-            <div className={`w-1.5 h-1.5 rounded-full ${isAnalyzing ? 'bg-[#FF9800] animate-pulse' : 'bg-[#00D1FF]'}`} />
-            {isAnalyzing ? 'AI ANALYZING...' : 'AI ENGINE READY'}
-          </span>
+          {isGeminiConfigured && (
+            <>
+              <Separator orientation="vertical" className="h-3 bg-[#2C2E33]" />
+              <span className={`font-bold flex items-center gap-1.5 ${isAnalyzing ? 'text-[#FF9800]' : 'text-[#00D1FF]'}`}>
+                <div className={`w-1.5 h-1.5 rounded-full ${isAnalyzing ? 'bg-[#FF9800] animate-pulse' : 'bg-[#00D1FF]'}`} />
+                {isAnalyzing ? 'AI ANALYZING...' : 'AI ENGINE READY'}
+              </span>
+            </>
+          )}
         </div>
       </footer>
     </div>
