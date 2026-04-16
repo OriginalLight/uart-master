@@ -1,0 +1,8 @@
+{
+  "name": "Uart Master",
+  "description": "A modern serial port tool with AI-powered log analysis and command suggestions.",
+  "requestFramePermissions": [
+    "serial"
+  ],
+  "majorCapabilities": []
+}
