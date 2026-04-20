@@ -1,5 +1,9 @@
-const { app, BrowserWindow } = require('electron');
-const path = require('path');
+import { app, BrowserWindow } from 'electron';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -8,17 +12,16 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-      // Web Serial support is usually auto-enabled in recent Electron versions
     },
     title: "Uart Master",
     backgroundColor: '#0a0a0a',
   });
 
-  // In development, load from the dev server
   if (process.env.VITE_DEV_SERVER_URL) {
     win.loadURL(process.env.VITE_DEV_SERVER_URL);
   } else {
-    // In production, load the built index.html
+    // Note: dist-electron/main.js is in dist-electron/, 
+    // dist/index.html is one level up in dist/
     win.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
@@ -32,7 +35,7 @@ function createWindow() {
     }
   });
 
-  win.webContents.session.setPermissionCheckHandler((webContents, permission, requestingOrigin) => {
+  win.webContents.session.setPermissionCheckHandler((webContents, permission) => {
     if (permission === 'serial') {
       return true;
     }

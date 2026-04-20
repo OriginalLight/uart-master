@@ -14,7 +14,7 @@ export default defineConfig(({mode}) => {
       electron([
         {
           // Main-Process entry file of the Electron App.
-          entry: 'electron/main.cjs',
+          entry: 'electron/main.ts',
         },
       ]),
       renderer(),

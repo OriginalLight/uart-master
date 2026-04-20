@@ -30,7 +30,7 @@ npm run electron:build
 The output files will be located in the `release/` folder.
 
 ## Key Configuration Files
-- `electron/main.cjs`: The main process code (handles window creation and serial permissions).
+- `electron/main.ts`: The main process code (handles window creation and serial permissions).
 - `vite.config.ts`: Integrated with `vite-plugin-electron`.
 - `package.json`: Contains `electron:build` script and build settings.
 
