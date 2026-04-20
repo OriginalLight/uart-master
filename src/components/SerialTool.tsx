@@ -35,9 +35,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
-import { analyzeSerialLogs, suggestCommands } from '@/services/gemini';
+import { analyzeSerialLogs, suggestCommands, AIConfig, AIProvider } from '@/services/aiService';
 import { translations, Language } from '@/i18n';
-import { Languages, Palette, Globe, X } from 'lucide-react';
+import { Languages, Palette, Globe, X, Cpu as CpuIcon, Link as LinkIcon } from 'lucide-react';
 import { 
   hexToAscii, 
   asciiToHex, 
@@ -93,6 +93,17 @@ export default function SerialTool() {
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('uart-master-lang') as Language) || 'zh');
   const [themeMode, setThemeMode] = useState<'dark' | 'light' | 'cyberpunk' | 'system'>(() => (localStorage.getItem('uart-master-theme') as any) || 'dark');
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('uart-master-api-key') || '');
+  const [aiProvider, setAiProvider] = useState<AIProvider>(() => (localStorage.getItem('uart-master-ai-provider') as AIProvider) || 'gemini');
+  const [aiModel, setAiModel] = useState(() => localStorage.getItem('uart-master-ai-model') || '');
+  const [aiBaseUrl, setAiBaseUrl] = useState(() => localStorage.getItem('uart-master-ai-base-url') || '');
+  
+  const aiConfig: AIConfig = {
+    provider: aiProvider,
+    apiKey,
+    model: aiModel || undefined,
+    baseUrl: aiBaseUrl || undefined
+  };
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isConvertOpen, setIsConvertOpen] = useState(false);
   const [isCrcOpen, setIsCrcOpen] = useState(false);
@@ -390,7 +401,7 @@ export default function SerialTool() {
       if (apiKey.length > 0) {
         try {
           const recentLogs = logs.slice(-10).map(l => `${l.type}: ${formatData(l.data)}`).join('\n');
-          const newSuggestions = await suggestCommands(recentLogs + `\ntx: ${formatData(latin1String)}`, t.suggestPrompt, apiKey);
+          const newSuggestions = await suggestCommands(recentLogs + `\ntx: ${formatData(latin1String)}`, t.suggestPrompt, aiConfig);
           setSuggestions(newSuggestions);
         } catch (e) {
           console.error('AI Suggestion failed:', e);
@@ -416,7 +427,7 @@ export default function SerialTool() {
     }
     setIsAnalyzing(true);
     const logText = logs.map(l => `[${l.timestamp}] ${l.type.toUpperCase()}: ${(l.type === 'rx' || l.type === 'tx') ? formatData(l.data) : l.data}`).join('\n');
-    const result = await analyzeSerialLogs(logText, t.aiPrompt, apiKey);
+    const result = await analyzeSerialLogs(logText, t.aiPrompt, aiConfig);
     setAnalysis(result || t.analysisFailed);
     setIsAnalyzing(false);
   };
@@ -618,25 +629,77 @@ export default function SerialTool() {
                   </div>
                 </div>
 
-                {/* API Key Settings */}
-                <div className="space-y-3">
-                  <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                    <Sparkles className="w-3 h-3" /> {t.apiKeyLabel}
+                {/* AI Settings */}
+                <div className="space-y-4 pt-2 border-t border-border">
+                  <label className="text-[11px] font-bold text-primary uppercase tracking-widest flex items-center gap-2">
+                    <Sparkles className="w-3 h-3" /> AI {t.settings}
                   </label>
-                  <Input 
-                    type="password"
-                    value={apiKey}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setApiKey(val);
-                      localStorage.setItem('uart-master-api-key', val);
-                    }}
-                    placeholder={t.apiKeyPlaceholder}
-                    className="h-9 bg-background border-border text-xs focus:ring-primary/30"
-                  />
-                  <p className="text-[10px] text-muted-foreground leading-relaxed italic">
-                    {t.apiKeyLabel}
-                  </p>
+                  
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t.aiProvider}</label>
+                    <Select 
+                      value={aiProvider} 
+                      onValueChange={(val: AIProvider) => {
+                        setAiProvider(val);
+                        localStorage.setItem('uart-master-ai-provider', val);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-xs bg-background">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="gemini">Google Gemini</SelectItem>
+                        <SelectItem value="openai">OpenAI (GPT)</SelectItem>
+                        <SelectItem value="minimax">MiniMax (海螺)</SelectItem>
+                        <SelectItem value="glm">Zhipu AI (GLM)</SelectItem>
+                        <SelectItem value="custom">Custom (OpenAI Compatible)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t.apiKeyLabel}</label>
+                    <Input 
+                      type="password"
+                      value={apiKey}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setApiKey(val);
+                        localStorage.setItem('uart-master-api-key', val);
+                      }}
+                      placeholder={t.apiKeyPlaceholder}
+                      className="h-8 bg-background border-border text-xs focus:ring-primary/30"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t.aiModel}</label>
+                      <Input 
+                        value={aiModel}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setAiModel(val);
+                          localStorage.setItem('uart-master-ai-model', val);
+                        }}
+                        placeholder="e.g. gpt-4o"
+                        className="h-8 bg-background border-border text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t.aiBaseUrl}</label>
+                      <Input 
+                        value={aiBaseUrl}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setAiBaseUrl(val);
+                          localStorage.setItem('uart-master-ai-base-url', val);
+                        }}
+                        placeholder="https://..."
+                        className="h-8 bg-background border-border text-xs"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </motion.div>
