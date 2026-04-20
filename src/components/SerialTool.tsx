@@ -35,9 +35,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
-import { analyzeSerialLogs, suggestCommands, AIConfig, AIProvider } from '@/services/aiService';
+import { analyzeSerialLogs, suggestCommands, AIConfig } from '@/services/aiService';
 import { translations, Language } from '@/i18n';
-import { Languages, Palette, Globe, X, Cpu as CpuIcon, Link as LinkIcon } from 'lucide-react';
+import { Languages, Palette, Globe, X, Cpu as CpuIcon, Link as LinkIcon, RotateCw } from 'lucide-react';
 import { 
   hexToAscii, 
   asciiToHex, 
@@ -93,15 +93,13 @@ export default function SerialTool() {
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('uart-master-lang') as Language) || 'zh');
   const [themeMode, setThemeMode] = useState<'dark' | 'light' | 'cyberpunk' | 'system'>(() => (localStorage.getItem('uart-master-theme') as any) || 'dark');
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('uart-master-api-key') || '');
-  const [aiProvider, setAiProvider] = useState<AIProvider>(() => (localStorage.getItem('uart-master-ai-provider') as AIProvider) || 'gemini');
   const [aiModel, setAiModel] = useState(() => localStorage.getItem('uart-master-ai-model') || '');
   const [aiBaseUrl, setAiBaseUrl] = useState(() => localStorage.getItem('uart-master-ai-base-url') || '');
   
   const aiConfig: AIConfig = {
-    provider: aiProvider,
     apiKey,
-    model: aiModel || undefined,
-    baseUrl: aiBaseUrl || undefined
+    model: aiModel || '',
+    baseUrl: aiBaseUrl || ''
   };
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -427,9 +425,14 @@ export default function SerialTool() {
     }
     setIsAnalyzing(true);
     const logText = logs.map(l => `[${l.timestamp}] ${l.type.toUpperCase()}: ${(l.type === 'rx' || l.type === 'tx') ? formatData(l.data) : l.data}`).join('\n');
-    const result = await analyzeSerialLogs(logText, t.aiPrompt, aiConfig);
-    setAnalysis(result || t.analysisFailed);
-    setIsAnalyzing(false);
+    try {
+      const result = await analyzeSerialLogs(logText, t.aiPrompt, aiConfig);
+      setAnalysis(result || t.analysisFailed);
+    } catch (error) {
+      setAnalysis(t.analysisFailed);
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const clearLogs = () => {
@@ -635,28 +638,6 @@ export default function SerialTool() {
                     <Sparkles className="w-3 h-3" /> AI {t.settings}
                   </label>
                   
-                  <div className="space-y-3">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t.aiProvider}</label>
-                    <Select 
-                      value={aiProvider} 
-                      onValueChange={(val: AIProvider) => {
-                        setAiProvider(val);
-                        localStorage.setItem('uart-master-ai-provider', val);
-                      }}
-                    >
-                      <SelectTrigger className="h-8 text-xs bg-background">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="gemini">Google Gemini</SelectItem>
-                        <SelectItem value="openai">OpenAI (GPT)</SelectItem>
-                        <SelectItem value="minimax">MiniMax (海螺)</SelectItem>
-                        <SelectItem value="glm">Zhipu AI (GLM)</SelectItem>
-                        <SelectItem value="custom">Custom (OpenAI Compatible)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t.apiKeyLabel}</label>
                     <Input 
@@ -672,7 +653,7 @@ export default function SerialTool() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{t.aiModel}</label>
                       <Input 
@@ -682,7 +663,7 @@ export default function SerialTool() {
                           setAiModel(val);
                           localStorage.setItem('uart-master-ai-model', val);
                         }}
-                        placeholder="e.g. gpt-4o"
+                        placeholder="e.g. gpt-4o, deepseek-chat"
                         className="h-8 bg-background border-border text-xs"
                       />
                     </div>
@@ -695,7 +676,7 @@ export default function SerialTool() {
                           setAiBaseUrl(val);
                           localStorage.setItem('uart-master-ai-base-url', val);
                         }}
-                        placeholder="https://..."
+                        placeholder="e.g. https://api.openai.com/v1"
                         className="h-8 bg-background border-border text-xs"
                       />
                     </div>
@@ -1328,10 +1309,29 @@ export default function SerialTool() {
                       animate={{ opacity: 1, y: 0 }}
                       className="space-y-4"
                     >
-                      <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-                        <h4 className="text-xs font-bold text-primary mb-2 flex items-center gap-2">
-                          <Sparkles className="w-3 h-3" /> {t.aiAnalysis}
-                        </h4>
+                      <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 group relative">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-xs font-bold text-primary flex items-center gap-2">
+                            <Sparkles className="w-3 h-3" /> {t.aiAnalysis}
+                          </h4>
+                          <div className="flex items-center gap-1">
+                            <button 
+                              onClick={handleAnalyze} 
+                              disabled={isAnalyzing}
+                              className="text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+                              title={t.retry}
+                            >
+                              <RotateCw className={`w-3 h-3 ${isAnalyzing ? 'animate-spin' : ''}`} />
+                            </button>
+                            <button 
+                              onClick={() => setAnalysis(null)} 
+                              className="text-muted-foreground hover:text-destructive transition-colors"
+                              title={t.clearAnalysis}
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
                         <div className="text-xs leading-relaxed text-foreground prose-xs">
                           {analysis.split('\n').map((line, i) => (
                             <p key={i} className="mb-2 last:mb-0">{line}</p>
