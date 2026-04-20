@@ -27,21 +27,39 @@ const DEFAULT_URLS: Record<AIProvider, string> = {
 };
 
 async function callOpenAICompatible(config: AIConfig, prompt: string, logs: string, isJson = false) {
-  const url = `${config.baseUrl || DEFAULT_URLS[config.provider]}/chat/completions`;
+  let baseUrl = config.baseUrl || DEFAULT_URLS[config.provider];
+  // Remove trailing flash for consistency
+  if (baseUrl.endsWith('/')) {
+    baseUrl = baseUrl.slice(0, -1);
+  }
+
+  // Determine the final URL
+  const url = baseUrl.includes('/chat/completions') ? baseUrl : `${baseUrl}/chat/completions`;
   const model = config.model || DEFAULT_MODELS[config.provider];
   
+  if (!model && config.provider === 'custom') {
+    throw new Error('Model name is required for custom provider');
+  }
+
   const response = await axios.post(url, {
     model,
     messages: [
-      { role: 'user', content: `${prompt}\n\nLogs/Context:\n${logs}${isJson ? '\n\nReturn ONLY a JSON array.' : ''}` }
+      { role: 'system', content: 'You are an embedded systems expert.' },
+      { role: 'user', content: `${prompt}\n\nLogs/Context:\n${logs}${isJson ? '\n\nReturn ONLY a JSON array of strings.' : ''}` }
     ],
     response_format: isJson ? { type: "json_object" } : undefined
   }, {
     headers: {
       'Authorization': `Bearer ${config.apiKey}`,
       'Content-Type': 'application/json'
-    }
+    },
+    timeout: 30000 // 30s timeout
   });
+
+  if (!response.data || !response.data.choices || !response.data.choices[0]) {
+    console.error('Invalid API Response:', response.data);
+    throw new Error(response.data?.error?.message || 'Invalid API response format');
+  }
 
   return response.data.choices[0].message.content;
 }
@@ -83,7 +101,14 @@ export async function suggestCommands(context: string, prompt: string, config: A
     }
 
     const content = await callOpenAICompatible(config, prompt, context, true);
-    const parsed = JSON.parse(content);
+    let cleanContent = content.trim();
+    
+    // Remove markdown code blocks if present
+    if (cleanContent.startsWith('```')) {
+      cleanContent = cleanContent.replace(/^```(?:json)?\n?|```$/g, '').trim();
+    }
+    
+    const parsed = JSON.parse(cleanContent);
     // Handle different JSON structures (some models return { suggestions: [...] })
     if (Array.isArray(parsed)) return parsed;
     if (parsed.suggestions && Array.isArray(parsed.suggestions)) return parsed.suggestions;
