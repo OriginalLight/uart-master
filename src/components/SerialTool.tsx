@@ -101,7 +101,16 @@ export default function SerialTool() {
   const [isMockOpen, setIsMockOpen] = useState(false);
   const [availablePorts, setAvailablePorts] = useState<SerialPort[]>([]);
   const [portLabels, setPortLabels] = useState<string[]>([]);
-  const [selectedPortIndex, setSelectedPortIndex] = useState<string>('request');
+  const [selectedPortId, setSelectedPortId] = useState<string>('request');
+  
+  const getPortId = (port: any): string => {
+    const info = port.getInfo();
+    if (info.usbVendorId !== undefined && info.usbProductId !== undefined) {
+      return `${info.usbVendorId}-${info.usbProductId}`;
+    }
+    // Fallback if no USB info (Bluetooth or other)
+    return `port-${availablePorts.indexOf(port)}`;
+  };
   
   // Tool states
   const [convertInput, setConvertInput] = useState('');
@@ -150,8 +159,8 @@ export default function SerialTool() {
       }));
       setPortLabels(labels);
 
-      if (ports.length > 0 && selectedPortIndex === 'request') {
-        setSelectedPortIndex('0');
+      if (ports.length > 0 && selectedPortId === 'request') {
+        setSelectedPortId(getPortId(ports[0]));
       }
     } catch (error) {
       console.error('Error refreshing ports:', error);
@@ -248,10 +257,10 @@ export default function SerialTool() {
   const connect = async () => {
     try {
       let selectedPort: SerialPort;
-      if (selectedPortIndex === 'request') {
+      if (selectedPortId === 'request') {
         selectedPort = await (navigator as any).serial.requestPort();
       } else {
-        selectedPort = availablePorts[parseInt(selectedPortIndex)];
+        selectedPort = availablePorts.find(p => getPortId(p) === selectedPortId) || availablePorts[0];
       }
 
       if (!selectedPort) {
@@ -486,13 +495,13 @@ export default function SerialTool() {
           
           <div className="flex items-center gap-2 bg-muted/30 p-0.5 rounded border border-border overflow-hidden">
             <div className="flex items-center">
-              <Select value={selectedPortIndex} onValueChange={setSelectedPortIndex} disabled={isConnected}>
-                <SelectTrigger className="w-[140px] h-7 border-none bg-transparent focus:ring-0 text-xs text-foreground truncate px-2">
+              <Select value={selectedPortId} onValueChange={setSelectedPortId} disabled={isConnected}>
+                <SelectTrigger className="w-[200px] h-7 border-none bg-transparent focus:ring-0 text-xs text-foreground truncate px-2">
                   <SelectValue placeholder={t.selectPort} />
                 </SelectTrigger>
-                <SelectContent className="max-w-[300px]">
+                <SelectContent className="max-w-[400px]">
                   {availablePorts.map((p, i) => (
-                    <SelectItem key={i} value={i.toString()}>
+                    <SelectItem key={getPortId(p)} value={getPortId(p)}>
                       {portLabels[i] || `Port ${i + 1}`}
                     </SelectItem>
                   ))}
