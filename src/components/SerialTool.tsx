@@ -24,6 +24,7 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import Logo from './Logo';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -469,6 +470,7 @@ export default function SerialTool() {
       {/* Header */}
       <header className="h-12 flex items-center justify-between px-4 bg-background border-b border-border z-10">
         <div className="flex items-center gap-3">
+          <Logo className="w-5 h-5 text-foreground" />
           <div className="flex items-center gap-2 font-bold text-sm tracking-tight">
             {t.title} <span className="text-[10px] text-[#00D1FF] border border-[#00D1FF] px-1 rounded-[2px] uppercase">AI-INTEGRATED</span>
           </div>
