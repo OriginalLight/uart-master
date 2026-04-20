@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu } from 'electron';
+import { app, BrowserWindow, Menu, ipcMain } from 'electron';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -12,6 +12,7 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
+    frame: false, // Create a frameless window
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -33,6 +34,20 @@ function createWindow() {
     // Correctly resolve path for production build
     win.loadFile(path.join(__dirname, '../dist/index.html'));
   }
+
+  // Window controls IPC
+  ipcMain.on('window-minimize', () => win.minimize());
+  ipcMain.on('window-maximize', () => {
+    if (win.isMaximized()) {
+      win.unmaximize();
+    } else {
+      win.maximize();
+    }
+  });
+  ipcMain.on('window-close', () => win.close());
+
+  win.on('maximize', () => win.webContents.send('window-is-maximized', true));
+  win.on('unmaximize', () => win.webContents.send('window-is-maximized', false));
 
   // CRITICAL: Web Serial handling in Electron
   // 1. Permission check for the 'serial' API
