@@ -113,11 +113,14 @@ export default function SerialTool() {
   
   const getPortId = (port: any): string => {
     const info = port.getInfo();
+    // Using index to ensure uniqueness for identical devices
+    const idx = availablePorts.indexOf(port);
     if (info.usbVendorId !== undefined && info.usbProductId !== undefined) {
-      return `${info.usbVendorId}-${info.usbProductId}`;
+      const vid = info.usbVendorId.toString(16).padStart(4, '0').toUpperCase();
+      const pid = info.usbProductId.toString(16).padStart(4, '0').toUpperCase();
+      return `${vid}:${pid}-${idx}`;
     }
-    // Fallback if no USB info (Bluetooth or other)
-    return `port-${availablePorts.indexOf(port)}`;
+    return `port-${idx}`;
   };
   
   // Tool states
