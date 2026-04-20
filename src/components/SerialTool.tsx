@@ -93,7 +93,6 @@ export default function SerialTool() {
   const [language, setLanguage] = useState<Language>(() => (localStorage.getItem('uart-master-lang') as Language) || 'zh');
   const [themeMode, setThemeMode] = useState<'dark' | 'light' | 'cyberpunk' | 'system'>(() => (localStorage.getItem('uart-master-theme') as any) || 'dark');
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('uart-master-api-key') || '');
-  const effectiveApiKey = apiKey || process.env.GEMINI_API_KEY || '';
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isConvertOpen, setIsConvertOpen] = useState(false);
   const [isCrcOpen, setIsCrcOpen] = useState(false);
@@ -141,21 +140,7 @@ export default function SerialTool() {
         const vid = info.usbVendorId.toString(16).padStart(4, '0').toUpperCase();
         const pid = info.usbProductId?.toString(16).padStart(4, '0').toUpperCase();
         
-        let deviceName = '';
-        // Try correlating with USB devices if permission exists
-        if ('usb' in navigator) {
-          try {
-            const usbDevices = await (navigator as any).usb.getDevices();
-            const match = usbDevices.find(d => d.vendorId === info.usbVendorId && d.productId === info.usbProductId);
-            if (match && (match.productName || match.manufacturerName)) {
-              deviceName = match.productName || match.manufacturerName || '';
-            }
-          } catch (e) {}
-        }
-        
-        const vendor = VENDOR_MAP[vid] || 'USB Device';
-        if (deviceName) return `${deviceName} (${vid}:${pid})`;
-        return `${vendor} (${vid}:${pid})`;
+        return `${vid}:${pid}`;
       }));
       setPortLabels(labels);
 
@@ -401,10 +386,16 @@ export default function SerialTool() {
       // Add to history
       setCommandHistory(prev => [data, ...prev.filter(h => h !== data)].slice(0, 20));
       
-      // Get suggestions after sending
-      const recentLogs = logs.slice(-10).map(l => `${l.type}: ${formatData(l.data)}`).join('\n');
-      const newSuggestions = await suggestCommands(recentLogs + `\ntx: ${formatData(latin1String)}`, t.suggestPrompt, effectiveApiKey);
-      setSuggestions(newSuggestions);
+      // Get AI suggestions only if API key present
+      if (apiKey.length > 0) {
+        try {
+          const recentLogs = logs.slice(-10).map(l => `${l.type}: ${formatData(l.data)}`).join('\n');
+          const newSuggestions = await suggestCommands(recentLogs + `\ntx: ${formatData(latin1String)}`, t.suggestPrompt, apiKey);
+          setSuggestions(newSuggestions);
+        } catch (e) {
+          console.error('AI Suggestion failed:', e);
+        }
+      }
     } catch (error) {
       toast.error(t.sendFailed + (error as Error).message);
     }
@@ -419,9 +410,13 @@ export default function SerialTool() {
       toast.error(t.analysisFailed);
       return;
     }
+    if (!apiKey) {
+      toast.error(t.apiKeyRequired);
+      return;
+    }
     setIsAnalyzing(true);
     const logText = logs.map(l => `[${l.timestamp}] ${l.type.toUpperCase()}: ${(l.type === 'rx' || l.type === 'tx') ? formatData(l.data) : l.data}`).join('\n');
-    const result = await analyzeSerialLogs(logText, t.aiPrompt, effectiveApiKey);
+    const result = await analyzeSerialLogs(logText, t.aiPrompt, apiKey);
     setAnalysis(result || t.analysisFailed);
     setIsAnalyzing(false);
   };
@@ -475,13 +470,13 @@ export default function SerialTool() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden font-sans">
+    <div className="flex flex-col h-full bg-background text-foreground overflow-hidden font-sans">
       {/* Header */}
       <header className="h-12 flex items-center justify-between px-4 bg-background border-b border-border z-10">
         <div className="flex items-center gap-3">
           <Logo className="w-5 h-5 text-foreground" />
           <div className="flex items-center gap-2 font-bold text-sm tracking-tight">
-            {t.title} <span className="text-[10px] text-[#00D1FF] border border-[#00D1FF] px-1 rounded-[2px] uppercase">AI-INTEGRATED</span>
+            {t.title} {apiKey.length > 0 && <span className="text-[10px] text-[#00D1FF] border border-[#00D1FF] px-1 rounded-[2px] uppercase">AI-INTEGRATED</span>}
           </div>
         </div>
 
@@ -995,7 +990,7 @@ export default function SerialTool() {
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className={`flex-1 grid overflow-hidden ${effectiveApiKey.length > 0 ? 'grid-cols-[240px_1fr_320px]' : 'grid-cols-[240px_1fr]'}`}>
+      <main className={`flex-1 grid overflow-hidden ${apiKey.length > 0 ? 'grid-cols-[240px_1fr_320px]' : 'grid-cols-[240px_1fr]'}`}>
         <aside className="border-r border-border bg-card flex flex-col overflow-y-auto">
           <div className="panel-header uppercase tracking-widest text-[10px] h-9 flex items-center px-4 border-b border-border bg-muted/20 font-bold">{t.serialConfig}</div>
           <div className="p-4 space-y-4">
@@ -1258,7 +1253,7 @@ export default function SerialTool() {
         </div>
 
         {/* AI Sidebar */}
-        {effectiveApiKey.length > 0 && (
+        {apiKey.length > 0 && (
           <aside className="bg-card border-l border-border flex flex-col overflow-hidden">
             <div className="panel-header uppercase tracking-widest text-[10px] h-9 flex items-center px-4 border-b border-border bg-muted/20 font-bold">{t.aiInsights}</div>
             <div className="flex-1 overflow-y-auto custom-scrollbar">
@@ -1333,7 +1328,7 @@ export default function SerialTool() {
             <span>TX: <span className="text-foreground font-mono">{formatBytes(stats.tx)}</span></span>
             <span>RX: <span className="text-foreground font-mono">{formatBytes(stats.rx)}</span></span>
           </div>
-          {effectiveApiKey.length > 0 && (
+          {apiKey.length > 0 && (
             <>
               <Separator orientation="vertical" className="h-3 bg-border" />
               <span className={`font-bold flex items-center gap-1.5 ${isAnalyzing ? 'text-destructive' : 'text-primary'}`}>
