@@ -20,7 +20,8 @@ import {
   Table,
   Bot,
   Plus,
-  ArrowRight
+  ArrowRight,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -81,6 +82,8 @@ export default function SerialTool() {
   const [isCrcOpen, setIsCrcOpen] = useState(false);
   const [isAsciiOpen, setIsAsciiOpen] = useState(false);
   const [isMockOpen, setIsMockOpen] = useState(false);
+  const [availablePorts, setAvailablePorts] = useState<SerialPort[]>([]);
+  const [selectedPortIndex, setSelectedPortIndex] = useState<string>('request');
   
   // Tool states
   const [convertInput, setConvertInput] = useState('');
@@ -96,6 +99,32 @@ export default function SerialTool() {
   useEffect(() => {
     localStorage.setItem('uart-master-mock-rules', JSON.stringify(mockRules));
   }, [mockRules]);
+
+  const refreshPorts = async () => {
+    if (!('serial' in navigator)) return;
+    try {
+      const ports = await (navigator as any).serial.getPorts();
+      setAvailablePorts(ports);
+      if (ports.length > 0 && selectedPortIndex === 'request') {
+        setSelectedPortIndex('0');
+      }
+    } catch (error) {
+      console.error('Error refreshing ports:', error);
+    }
+  };
+
+  useEffect(() => {
+    refreshPorts();
+    
+    const handlePortChange = () => refreshPorts();
+    (navigator as any).serial.addEventListener('connect', handlePortChange);
+    (navigator as any).serial.addEventListener('disconnect', handlePortChange);
+    
+    return () => {
+      (navigator as any).serial.removeEventListener('connect', handlePortChange);
+      (navigator as any).serial.removeEventListener('disconnect', handlePortChange);
+    };
+  }, []);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const mockRulesRef = useRef(mockRules);
@@ -173,18 +202,31 @@ export default function SerialTool() {
 
   const connect = async () => {
     try {
-      const selectedPort = await (navigator as any).serial.requestPort();
+      let selectedPort: SerialPort;
+      if (selectedPortIndex === 'request') {
+        selectedPort = await (navigator as any).serial.requestPort();
+      } else {
+        selectedPort = availablePorts[parseInt(selectedPortIndex)];
+      }
+
+      if (!selectedPort) {
+        toast.error('No port selected');
+        return;
+      }
+
       await selectedPort.open({ 
         baudRate: parseInt(baudRate),
         dataBits: parseInt(dataBits),
         stopBits: parseInt(stopBits),
         parity: parity
-      });
+      } as any);
       
       setPort(selectedPort);
       setIsConnected(true);
       toast.success('Connected to port');
       addLog('info', `Connected: ${baudRate}bps, ${dataBits}N${stopBits}`);
+      
+      refreshPorts();
 
       const reader = selectedPort.readable.getReader();
       setReader(reader);
@@ -396,22 +438,40 @@ export default function SerialTool() {
             </span>
           </div>
           
-          <div className="flex items-center gap-2 bg-muted/30 p-0.5 rounded border border-border">
-            <Select value={baudRate} onValueChange={setBaudRate} disabled={isConnected}>
-              <SelectTrigger className="w-[100px] h-7 border-none bg-transparent focus:ring-0 text-xs text-foreground">
-                <SelectValue placeholder="Baud" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="9600">9600</SelectItem>
-                <SelectItem value="19200">19200</SelectItem>
-                <SelectItem value="38400">38400</SelectItem>
-                <SelectItem value="57600">57600</SelectItem>
-                <SelectItem value="115200">115200</SelectItem>
-                <SelectItem value="230400">230400</SelectItem>
-                <SelectItem value="460800">460800</SelectItem>
-                <SelectItem value="921600">921600</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex items-center gap-2 bg-muted/30 p-0.5 rounded border border-border overflow-hidden">
+            <div className="flex items-center">
+              <Select value={selectedPortIndex} onValueChange={setSelectedPortIndex} disabled={isConnected}>
+                <SelectTrigger className="w-[140px] h-7 border-none bg-transparent focus:ring-0 text-xs text-foreground truncate px-2">
+                  <SelectValue placeholder={t.selectPort} />
+                </SelectTrigger>
+                <SelectContent className="max-w-[300px]">
+                  {availablePorts.map((p, i) => {
+                    const info = (p as any).getInfo?.() || {};
+                    const label = info.usbVendorId ? `USB Device (${info.usbVendorId.toString(16).padStart(4, '0')}:${info.usbProductId?.toString(16).padStart(4, '0')})` : `Port ${i + 1}`;
+                    return (
+                      <SelectItem key={i} value={i.toString()}>
+                        {label}
+                      </SelectItem>
+                    );
+                  })}
+                  <SelectItem value="request">
+                    <span className="flex items-center gap-1.5">
+                      <Plus className="w-3 h-3" /> {t.selectPort}...
+                    </span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6 text-muted-foreground hover:text-foreground rounded-none" 
+                onClick={refreshPorts}
+                disabled={isConnected}
+                title="Refresh ports"
+              >
+                <RefreshCw className="w-3 h-3" />
+              </Button>
+            </div>
             <Separator orientation="vertical" className="h-4 bg-border" />
             {isConnected ? (
               <Button variant="ghost" size="sm" onClick={disconnect} className="h-7 text-xs text-[#E53935] hover:text-[#E53935] hover:bg-[#E53935]/10 px-2">
