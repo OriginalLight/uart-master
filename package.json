@@ -30,7 +30,8 @@
     },
     "linux": {
       "target": "AppImage"
-    }
+    },
+    "icon": "public/icon.png"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.0",

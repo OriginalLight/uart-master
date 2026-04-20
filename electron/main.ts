@@ -21,6 +21,7 @@ function createWindow() {
     title: "Uart Master",
     backgroundColor: '#0a0a0a',
     autoHideMenuBar: true,
+    icon: path.join(__dirname, '../public/icon.png'),
   });
 
   // Explicitly remove menu from this window
