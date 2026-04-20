@@ -54,6 +54,22 @@ interface LogEntry {
   data: string;
 }
 
+const VENDOR_MAP: Record<string, string> = {
+  '1A86': 'CH340/CH341',
+  '10C4': 'CP210x USB to UART',
+  '0403': 'FTDI USB Serial',
+  '2341': 'Arduino',
+  '2E8A': 'Raspberry Pi RP2',
+  '303A': 'Espressif ESP32',
+  '067B': 'Prolific PL2303',
+  '16C0': 'Teensy/Arduino',
+  '0483': 'STM32 ST-Link',
+  '1366': 'SEGGER J-Link',
+  '239A': 'Adafruit',
+  '1B4F': 'SparkFun',
+  '2886': 'Seeed Studio',
+};
+
 export default function SerialTool() {
   const [port, setPort] = useState<SerialPort | null>(null);
   const [reader, setReader] = useState<ReadableStreamDefaultReader | null>(null);
@@ -83,6 +99,7 @@ export default function SerialTool() {
   const [isAsciiOpen, setIsAsciiOpen] = useState(false);
   const [isMockOpen, setIsMockOpen] = useState(false);
   const [availablePorts, setAvailablePorts] = useState<SerialPort[]>([]);
+  const [portLabels, setPortLabels] = useState<string[]>([]);
   const [selectedPortIndex, setSelectedPortIndex] = useState<string>('request');
   
   // Tool states
@@ -105,6 +122,33 @@ export default function SerialTool() {
     try {
       const ports = await (navigator as any).serial.getPorts();
       setAvailablePorts(ports);
+      
+      // Try to get humane labels
+      const labels = await Promise.all(ports.map(async (port, i) => {
+        const info = (port as any).getInfo();
+        if (!info.usbVendorId) return `Serial Port ${i + 1}`;
+        
+        const vid = info.usbVendorId.toString(16).padStart(4, '0').toUpperCase();
+        const pid = info.usbProductId?.toString(16).padStart(4, '0').toUpperCase();
+        
+        let deviceName = '';
+        // Try correlating with USB devices if permission exists
+        if ('usb' in navigator) {
+          try {
+            const usbDevices = await (navigator as any).usb.getDevices();
+            const match = usbDevices.find(d => d.vendorId === info.usbVendorId && d.productId === info.usbProductId);
+            if (match && (match.productName || match.manufacturerName)) {
+              deviceName = match.productName || match.manufacturerName || '';
+            }
+          } catch (e) {}
+        }
+        
+        const vendor = VENDOR_MAP[vid] || 'USB Device';
+        if (deviceName) return `${deviceName} (${vid}:${pid})`;
+        return `${vendor} (${vid}:${pid})`;
+      }));
+      setPortLabels(labels);
+
       if (ports.length > 0 && selectedPortIndex === 'request') {
         setSelectedPortIndex('0');
       }
@@ -445,15 +489,11 @@ export default function SerialTool() {
                   <SelectValue placeholder={t.selectPort} />
                 </SelectTrigger>
                 <SelectContent className="max-w-[300px]">
-                  {availablePorts.map((p, i) => {
-                    const info = (p as any).getInfo?.() || {};
-                    const label = info.usbVendorId ? `USB Device (${info.usbVendorId.toString(16).padStart(4, '0')}:${info.usbProductId?.toString(16).padStart(4, '0')})` : `Port ${i + 1}`;
-                    return (
-                      <SelectItem key={i} value={i.toString()}>
-                        {label}
-                      </SelectItem>
-                    );
-                  })}
+                  {availablePorts.map((p, i) => (
+                    <SelectItem key={i} value={i.toString()}>
+                      {portLabels[i] || `Port ${i + 1}`}
+                    </SelectItem>
+                  ))}
                   <SelectItem value="request">
                     <span className="flex items-center gap-1.5">
                       <Plus className="w-3 h-3" /> {t.selectPort}...
