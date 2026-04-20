@@ -62,7 +62,7 @@ export default function SerialTool() {
   const [dataBits, setDataBits] = useState<'7' | '8'>('8');
   const [stopBits, setStopBits] = useState<'1' | '2'>('1');
   const [parity, setParity] = useState<'none' | 'even' | 'odd'>('none');
-  const [dataFormat, setDataFormat] = useState<'ascii' | 'hex'>('ascii');
+  const [dataFormat, setDataFormat] = useState<'ascii' | 'hex'>('hex');
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [input, setInput] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -90,7 +90,7 @@ export default function SerialTool() {
     const saved = localStorage.getItem('uart-master-mock-rules');
     if (!saved) return [];
     const parsed = JSON.parse(saved);
-    return parsed.map((r: any) => ({ ...r, format: r.format || 'ascii' }));
+    return parsed.map((r: any) => ({ ...r, format: r.format || 'hex' }));
   });
 
   useEffect(() => {
@@ -533,15 +533,6 @@ export default function SerialTool() {
                   </p>
                 </div>
               </div>
-
-              <div className="px-6 py-4 bg-background/50 border-t border-border flex justify-end">
-                <Button 
-                  onClick={() => setIsSettingsOpen(false)}
-                  className="h-8 px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-[11px] uppercase tracking-widest"
-                >
-                  {t.save}
-                </Button>
-              </div>
             </motion.div>
           </div>
         )}
@@ -791,7 +782,7 @@ export default function SerialTool() {
                      size="sm" 
                      variant="outline" 
                      className="h-7 px-3 text-[10px] gap-1.5 border-primary/30 text-primary hover:bg-primary/5"
-                     onClick={() => setMockRules([...mockRules, { id: Date.now().toString(), request: '', response: '', enabled: true, format: 'ascii' }])}
+                     onClick={() => setMockRules([...mockRules, { id: Date.now().toString(), request: '', response: '', enabled: true, format: 'hex' }])}
                    >
                      <Plus className="w-3 h-3" /> {t.mockAdd}
                    </Button>
@@ -895,7 +886,7 @@ export default function SerialTool() {
       {/* Main Content */}
       <main className={`flex-1 grid overflow-hidden ${effectiveApiKey.length > 0 ? 'grid-cols-[240px_1fr_320px]' : 'grid-cols-[240px_1fr]'}`}>
         <aside className="border-r border-border bg-card flex flex-col overflow-y-auto">
-          <div className="panel-header uppercase tracking-widest text-[10px] py-2 px-4 border-b border-border bg-muted/20 font-bold">{t.baudRate}</div>
+          <div className="panel-header uppercase tracking-widest text-[10px] h-9 flex items-center px-4 border-b border-border bg-muted/20 font-bold">{t.serialConfig}</div>
           <div className="p-4 space-y-4">
             <div className="space-y-1">
               <label className="text-[11px] text-muted-foreground uppercase tracking-wider">{t.baudRate}</label>
@@ -1022,7 +1013,7 @@ export default function SerialTool() {
 
         {/* Console Area */}
         <div className="flex flex-col bg-background min-h-0">
-          <div className="panel-header flex items-center justify-between uppercase tracking-widest text-[10px] py-1.5 px-4 border-b border-border bg-muted/20 font-bold">
+          <div className="panel-header flex items-center justify-between uppercase tracking-widest text-[10px] h-9 px-4 border-b border-border bg-muted/20 font-bold">
             <span>{t.console}</span>
             <div className="flex items-center gap-1 pr-1">
               <Tooltip>
@@ -1158,7 +1149,7 @@ export default function SerialTool() {
         {/* AI Sidebar */}
         {effectiveApiKey.length > 0 && (
           <aside className="bg-card border-l border-border flex flex-col overflow-hidden">
-            <div className="panel-header uppercase tracking-widest text-[10px] py-2 px-4 border-b border-border bg-muted/20 font-bold">{t.aiInsights}</div>
+            <div className="panel-header uppercase tracking-widest text-[10px] h-9 flex items-center px-4 border-b border-border bg-muted/20 font-bold">{t.aiInsights}</div>
             <div className="flex-1 overflow-y-auto custom-scrollbar">
               <div className="p-4 space-y-4">
                 <AnimatePresence mode="wait">
