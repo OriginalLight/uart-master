@@ -1,15 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
 
-const apiKey = process.env.GEMINI_API_KEY || "";
-const ai = new GoogleGenAI({ apiKey });
-
-export const isGeminiConfigured = apiKey.length > 0;
-
-export async function analyzeSerialLogs(logs: string) {
+export async function analyzeSerialLogs(logs: string, prompt: string, apiKey: string) {
+  if (!apiKey) return "API Key not configured. Please set it in Settings.";
   try {
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `You are an expert embedded systems engineer. Analyze the following serial port logs and identify any issues, errors, or patterns. Suggest potential solutions or next steps.
+      contents: `${prompt}
       
       Logs:
       ${logs}
@@ -19,20 +16,20 @@ export async function analyzeSerialLogs(logs: string) {
     return response.text;
   } catch (error) {
     console.error("Gemini analysis error:", error);
-    return "Analysis failed. Please check your API key and network connection.";
+    return null;
   }
 }
 
-export async function suggestCommands(context: string) {
+export async function suggestCommands(context: string, prompt: string, apiKey: string) {
+  if (!apiKey) return [];
   try {
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Based on the following context of a serial communication session, suggest 3-5 useful commands that the user might want to send next.
+      contents: `${prompt}
       
       Context:
-      ${context}
-      
-      Return only a JSON array of strings, e.g., ["AT+GMR", "help", "status"].`,
+      ${context}`,
       config: {
         responseMimeType: "application/json",
       }

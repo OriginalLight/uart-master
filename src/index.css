@@ -78,6 +78,50 @@
     --terminal-bg: #000000;
 }
 
+.theme-light {
+    --background: #FFFFFF;
+    --foreground: #1A1A1A;
+    --card: #F8F9FA;
+    --card-foreground: #1A1A1A;
+    --popover: #FFFFFF;
+    --popover-foreground: #1A1A1A;
+    --primary: #0070F3;
+    --primary-foreground: #FFFFFF;
+    --secondary: #E2E8F0;
+    --secondary-foreground: #1A1A1A;
+    --muted: #F1F5F9;
+    --muted-foreground: #64748B;
+    --accent: #F1F5F9;
+    --accent-foreground: #1A1A1A;
+    --destructive: #EF4444;
+    --border: #E2E8F0;
+    --input: #FFFFFF;
+    --ring: #0070F3;
+    --terminal-bg: #F8FAFC;
+}
+
+.theme-cyberpunk {
+    --background: #0D0221;
+    --foreground: #00FF9F;
+    --card: #190E4F;
+    --card-foreground: #00FF9F;
+    --popover: #190E4F;
+    --popover-foreground: #00FF9F;
+    --primary: #FF0055;
+    --primary-foreground: #FFFFFF;
+    --secondary: #240B36;
+    --secondary-foreground: #00FF9F;
+    --muted: #240B36;
+    --muted-foreground: #B5179E;
+    --accent: #7209B7;
+    --accent-foreground: #00FF9F;
+    --destructive: #F72585;
+    --border: #4CC9F0;
+    --input: #0D0221;
+    --ring: #FF0055;
+    --terminal-bg: #0D0221;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
